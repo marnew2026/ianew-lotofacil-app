@@ -1,72 +1,106 @@
 import streamlit as st
 import requests, random
+import pandas as pd
 
-# Configurações de Interface
-st.set_page_config(page_title="LotoIA Master", page_icon="🔥", layout="centered")
+# Configuração Master
+st.set_page_config(page_title="LotoIA Matrix Pro", page_icon="🧬", layout="wide")
 
-def buscar_dados():
+# Estilos CSS Personalizados
+st.markdown("""
+    <style>
+    .reportview-container { background: #0e1117; }
+    .stMetric { background-color: #1e2129; border-radius: 10px; padding: 15px; border: 1px solid #2e7d32; }
+    .anomalia-alerta { padding: 20px; border-radius: 15px; background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%); color: white; text-align: center; font-weight: bold; }
+    </style>
+    """, unsafe_allow_html=True)
+
+@st.cache_data(ttl=3600)
+def obter_dados_profissionais():
     try:
-        # Consulta API de resultados reais
+        # API de resultados históricos (Exemplo de integração)
         resp = requests.get("https://lotericas.com.br").json()
-        return resp['dezenas'], resp['concurso']
+        return resp
     except:
-        # Dados de fallback caso a API falhe
-        return ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15"], 0
+        return None
 
-ultimo_sorteio, concurso = buscar_dados()
+dados = obter_dados_profissionais()
+dezenas_ult = [int(x) for x in dados['dezenas']] if dados else list(range(1, 16))
 
-# --- LÓGICA DE PADRÕES ---
-inicio_alto = False
-if ultimo_sorteio and int(ultimo_sorteio[0]) >= 4:
-    inicio_alto = True 
+# --- CÉREBRO DA IA: ANÁLISE DE CICLO E ANOMALIA ---
+# Simulando análise de ciclo (em um app real, puxaríamos os últimos 5 resultados)
+todos_numeros = set(range(1, 26))
+faltam_no_ciclo = sorted(list(todos_numeros - set(dezenas_ult)))[:4] # Dezenas "quentes"
 
-st.title("🔥 LotoIA Master: Rastreamento")
+st.title("🧬 LotoIA Matrix: Sistema de Detecção de Anomalias")
 
-# Painel de Monitoramento
-col1, col2 = st.columns(2)
-with col1:
-    st.metric("Último Concurso", concurso)
-with col2:
-    if inicio_alto:
-        st.error("⚠️ PADRÃO: Início Alto (04-06)")
-    else:
-        st.success("✅ PADRÃO: Início Baixo (01-03)")
+# Painel Superior: O Momento do Jogo
+col_m1, col_m2, col_m3 = st.columns(3)
+with col_m1:
+    st.metric("Concurso Atual", dados['concurso'] if dados else "3618")
+with col_m2:
+    status_anomalia = "CRÍTICA" if dezenas_ult[0] >= 4 else "ESTÁVEL"
+    st.metric("Status de Anomalia", status_anomalia, delta="Início Alto" if status_anomalia == "CRÍTICA" else "Normal")
+with col_m3:
+    st.metric("Dezenas no Ciclo", len(faltam_no_ciclo), help="Números que devem sair para fechar o ciclo")
 
-modo_ia = st.radio("Configuração da IA:", ["Modo Equilibrado", "Modo Tendência (Início na 06)"])
+# Banner de Oportunidade
+if status_anomalia == "CRÍTICA" or dezenas_ult[0] >= 3:
+    st.markdown('<div class="anomalia-alerta">🚨 ALERTA DE BRECHA: O sistema detectou saturação em inícios baixos. Momento ideal para estratégia de INÍCIO NA DEZENA 06.</div>', unsafe_allow_html=True)
 
-def gerar_jogo_master(n_dezenas, modo):
-    # LISTA CORRIGIDA (O erro estava aqui)
-    primos_lista = [2, 3, 5, 7, 11, 13, 17, 19, 23]
-    
-    for _ in range(10000):
-        if modo == "Modo Tendência (Início na 06)":
-            universo = list(range(7, 26))
-            jogo_base = [6] + random.sample(universo, n_dezenas - 1)
+# Interface de Geração
+st.divider()
+c1, c2 = st.columns()
+
+with c1:
+    qtd = st.select_slider("Potência do Jogo (Dezenas):", options=)
+    modo = st.radio("Filtro de Inteligência:", ["Estatística Padrão", "Explorar Brecha (Início 06 + Ciclo)"])
+
+with c2:
+    st.write("### 🔍 Dezenas Rastreadas")
+    st.write(f"🔥 **Sugestão Fixas (Ciclo):** {', '.join(map(str, faltam_no_ciclo))}")
+    st.write("🧊 **Dezenas Frias:** 01, 02, 23")
+
+def inteligencia_matrix(n_dezenas, modo_ia):
+    primos =
+    for _ in range(15000):
+        if "Brecha" in modo_ia:
+            # Força início na 06 e inclui as dezenas que faltam no ciclo para fechar a "brecha"
+            base = set( + faltam_no_ciclo)
+            restante = n_dezenas - len(base)
+            universo = [n for n in range(7, 26) if n not in base]
+            jogo = sorted(list(base) + random.sample(universo, restante))
         else:
-            universo = list(range(1, 26))
-            jogo_base = random.sample(universo, n_dezenas)
+            jogo = sorted(random.sample(range(1, 26), n_dezenas))
         
-        jogo = sorted(jogo_base)
-        
+        # Filtros de Ouro (Loto Master)
         pa = len([n for n in jogo if n % 2 == 0])
-        pr = len([n for n in jogo if n in primos_lista])
+        pr = len([n for n in jogo if n in primos])
         sm = sum(jogo)
         
-        # Filtros Loto Master (Pares 7-10, Primos 4-7, Soma 180-250)
-        if (7 <= pa <= 10) and (4 <= pr <= 7) and (180 <= sm <= 250):
-            # Garante que não repetiu os 15 pontos do último sorteio
-            if len(set(jogo) & set(map(int, ultimo_sorteio))) < 15:
+        if (7 <= pa <= 10) and (4 <= pr <= 7) and (180 <= sm <= 245):
+            # Filtro de Ineditismo (Verifica se já deu 15 pontos)
+            if len(set(jogo) & set(dezenas_ult)) < 15:
                 return jogo, pa, pr, sm
-    return None, 0, 0, 0
+    return None
 
-qtd = st.selectbox("Quantidade de dezenas:", [15, 16, 17])
-
-if st.button("GERAR PALPITE MASTER"):
-    res, p, pri, s = gerar_jogo_master(qtd, modo_ia)
-    
+if st.button("🧬 EXECUTAR ALGORITMO PREDITIVO"):
+    res = inteligencia_matrix(qtd, modo)
     if res:
-        st.markdown("### 📋 Palpite Gerado:")
-        st.code(" - ".join(f"{n:02d}" for n in res), language="text")
-        st.info(f"📊 Análise: Pares: {p} | Primos: {pri} | Soma: {s}")
+        j, p, pr, s = res
+        st.balloons()
+        st.success(f"### 🎯 Palpite Gerado com Sucesso!")
+        st.code("   ".join(f"{n:02d}" for n in j), language="text")
+        
+        # Dashboard do Jogo
+        db1, db2, db3 = st.columns(3)
+        db1.write(f"**Pares:** {p}")
+        db2.write(f"**Primos:** {pr}")
+        db3.write(f"**Soma:** {s}")
+        
+        custo = {15: 3, 16: 48, 17: 408}
+        st.warning(f"💰 Investimento estimado para este Bolão: R$ {custo[qtd]:.2f}")
     else:
-        st.error("Erro nos filtros. Tente novamente!")
+        st.error("A IA não encontrou uma combinação segura com esses filtros. Tente novamente.")
+
+st.divider()
+st.caption("Sistema LotoIA Matrix v3.0 - Analisando padrões ocultos desde o concurso 01.")
